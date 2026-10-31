@@ -61,7 +61,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.skilfully.etheros:EtherosFramework:2.0.0'
+    implementation 'cn.etheros:EtherosFramework:1.0.0'
 }
 ```
 
@@ -80,7 +80,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.skilfully.etheros:EtherosFramework:2.0.0'
+    implementation 'cn.etheros:EtherosFramework:1.0.0'
 }
 ```
 
@@ -101,7 +101,7 @@ plugins {
 }
 
 dependencies {
-    compileOnly 'cn.skilfully.etheros:EtherosFramework:2.0.0'
+    compileOnly 'cn.etheros:EtherosFramework:1.0.0'
 }
 ```
 
@@ -264,7 +264,7 @@ File configFile = ConfigFileUtil.extractFileFromJarResources(
 ## 包结构
 
 ```
-cn.skilfully.etheros.etherosframework
+cn.etheros.etherosframework
 ├── di/
 │   ├── annotation/   — @Service, @GlobalService, @Autowired, @GlobalAutowired,
 │   │                    @Configuration, @Bean, @Value, @PostConstruct, @PreDestroy, @Prototype
@@ -359,10 +359,10 @@ A.@PreDestroy  →  B.@PreDestroy
 
 | 旧产物 | 版本 | 适用范围 |
 |--------|------|---------|
-| `cn.skilfully.etheros:EtherosFramework-Yosemite` | 1.2.0 | Java 17 / MC 1.17–1.20.4 |
-| `cn.skilfully.etheros:EtherosFramework-ElCapitan` | 1.0.0 | Java 21 / MC 1.20.5+ |
+| `cn.etheros:EtherosFramework-Yosemite` | 1.2.0 | Java 17 / MC 1.17–1.20.4 |
+| `cn.etheros:EtherosFramework-ElCapitan` | 1.0.0 | Java 21 / MC 1.20.5+ |
 
-替换为 `cn.skilfully.etheros:EtherosFramework:2.0.0`。公开 API 不变，改动只在构建依赖与坐标。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
+替换为 `cn.etheros:EtherosFramework:1.0.0`。公开 API 不变，改动只在构建依赖与坐标。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
 
 ## 构建
 

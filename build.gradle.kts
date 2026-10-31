@@ -4,8 +4,8 @@ plugins {
     id("com.vanniktech.maven.publish") version "0.36.0"
 }
 
-group = "cn.skilfully.etheros"
-version = "2.0.0"
+group = "cn.etheros"
+version = "1.0.0"
 description = "Etheros Framework (Java 8+ / Minecraft 1.8.x\u201326.2)"
 
 java {
@@ -56,7 +56,7 @@ mavenPublishing {
     publishToMavenCentral(true)
     signAllPublications()
 
-    coordinates("cn.skilfully.etheros", "EtherosFramework", project.version.toString())
+    coordinates("cn.etheros", "EtherosFramework", project.version.toString())
 
     pom {
         name = rootProject.name

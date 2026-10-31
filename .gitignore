@@ -42,3 +42,6 @@ bin/
 ### Mac OS ###
 .DS_Store
 /.idea/
+
+### 发布凭据（勿提交） ###
+gradle.properties
