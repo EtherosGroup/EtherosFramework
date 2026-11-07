@@ -61,7 +61,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.etheros:EtherosFramework:2.3.0'
+    implementation 'cn.etheros:EtherosFramework:2.4.0'
 }
 ```
 
@@ -80,7 +80,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.etheros:EtherosFramework:2.3.0'
+    implementation 'cn.etheros:EtherosFramework:2.4.0'
 }
 ```
 
@@ -101,7 +101,7 @@ plugins {
 }
 
 dependencies {
-    compileOnly 'cn.etheros:EtherosFramework:2.3.0'
+    compileOnly 'cn.etheros:EtherosFramework:2.4.0'
 }
 ```
 
@@ -435,7 +435,7 @@ A.@PreDestroy  →  B.@PreDestroy
 | `cn.skilfully.etheros:EtherosFramework-Yosemite` | 1.2.0 | Java 17 / MC 1.17–1.20.4 |
 | `cn.skilfully.etheros:EtherosFramework-ElCapitan` | 1.0.0 | Java 21 / MC 1.20.5+ |
 
-替换为 `cn.etheros:EtherosFramework:2.3.0`。事件接口由 `HookManager` 更名为 `EventBus`，包 `hook` 迁移到 `event`；其余 API 与用法不变。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
+替换为 `cn.etheros:EtherosFramework:2.4.0`。事件接口由 `HookManager` 更名为 `EventBus`，包 `hook` 迁移到 `event`；其余 API 与用法不变。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
 
 ## 构建
 
@@ -451,7 +451,7 @@ A.@PreDestroy  →  B.@PreDestroy
 
 推 `v*` 标签触发 `.github/workflows/publish.yml`：构建、测试、签名并发布到 Maven Central。
 
-标签版本必须与 `build.gradle.kts` 的 `version` 一致：标签 `v2.3.0` 对应 `version = "2.3.0"`。
+标签版本必须与 `build.gradle.kts` 的 `version` 一致：标签 `v2.4.0` 对应 `version = "2.4.0"`。
 
 仓库需配置的 secrets：
 
