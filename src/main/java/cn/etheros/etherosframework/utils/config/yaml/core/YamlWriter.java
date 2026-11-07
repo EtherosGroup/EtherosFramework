@@ -78,10 +78,10 @@ public final class YamlWriter {
                 Object value = FieldAccessor.getField(binding.field(), target);
                 String path = binding.yamlPath();
                 if (value instanceof Collection) {
-                    collectListReplacement(lines, index, path,
+                    collectListReplacement(index, path,
                             new ArrayList<Object>((Collection<?>) value), replacements);
                 } else if (value != null && value.getClass().isArray()) {
-                    collectListReplacement(lines, index, path, arrayValues(value), replacements);
+                    collectListReplacement(index, path, arrayValues(value), replacements);
                 } else {
                     replaceLine(lines, index, path, value);
                 }
@@ -112,13 +112,25 @@ public final class YamlWriter {
         String line = lines.get(info.lineIndex);
         String valueStr = formatScalar(value);
         String prefix = line.substring(0, info.valueStart);
-        int commentStart = commentAwareIndexOf(line, info.valueStart);
-        String suffix = commentStart > 0 ? line.substring(commentStart) : "";
-        lines.set(info.lineIndex, prefix + valueStr + suffix);
+        lines.set(info.lineIndex, prefix + valueStr + trailingSuffix(line, info.valueStart));
     }
 
-    private static void collectListReplacement(List<String> lines, LineIndex index,
-                                               String path, List<?> newItems,
+    /**
+     * 取「值之后到行尾」的原文，包含值与原注释之间的空白；没有行内注释时返回空串。
+     */
+    private static String trailingSuffix(String line, int valueStart) {
+        int commentStart = commentAwareIndexOf(line, valueStart);
+        if (commentStart < 0) {
+            return "";
+        }
+        int suffixStart = commentStart;
+        while (suffixStart > valueStart && line.charAt(suffixStart - 1) == ' ') {
+            suffixStart--;
+        }
+        return line.substring(suffixStart);
+    }
+
+    private static void collectListReplacement(LineIndex index, String path, List<?> newItems,
                                                List<ListReplacement> replacements) {
         LineInfo info = index.lineMap.get(path);
         ListBlock block = index.listBlocks.get(path);
@@ -127,11 +139,51 @@ public final class YamlWriter {
         }
 
         String indent = TextUtil.repeat(" ", block.indent);
+        List<BlockEntry> remaining = new ArrayList<>(block.entries);
         List<String> newLines = new ArrayList<>(newItems.size());
         for (Object item : newItems) {
-            newLines.add(indent + "- " + formatScalar(item));
+            String formatted = formatScalar(item);
+            BlockEntry match = findEntry(remaining, formatted);
+            if (match == null) {
+                newLines.add(indent + "- " + formatted);
+            } else {
+                newLines.addAll(match.headerComments);
+                newLines.add(indent + "- " + formatted + match.inlineSuffix);
+            }
         }
         replacements.add(new ListReplacement(block.startLine, block.endLine, newLines));
+    }
+
+    /**
+     * 在尚未匹配的旧条目中查找同值条目，命中后从候选中移除，保证注释只复用一次。
+     */
+    private static BlockEntry findEntry(List<BlockEntry> remaining, String itemText) {
+        for (int i = 0; i < remaining.size(); i++) {
+            if (remaining.get(i).itemText.equals(itemText)) {
+                return remaining.remove(i);
+            }
+        }
+        return null;
+    }
+
+    private static BlockEntry createEntry(String rawLine, int dashIdx) {
+        int valueStart = dashIdx + 1;
+        while (valueStart < rawLine.length() && rawLine.charAt(valueStart) == ' ') {
+            valueStart++;
+        }
+
+        String tail = rawLine.substring(valueStart);
+        int commentIdx = commentAwareIndexOf(tail);
+        int valueRegionEnd = commentIdx >= 0 ? valueStart + commentIdx : rawLine.length();
+
+        int trimmedEnd = valueRegionEnd;
+        while (trimmedEnd > valueStart && rawLine.charAt(trimmedEnd - 1) == ' ') {
+            trimmedEnd--;
+        }
+
+        String itemText = TextUtil.strip(rawLine.substring(valueStart, valueRegionEnd));
+        String inlineSuffix = commentIdx >= 0 ? rawLine.substring(trimmedEnd) : "";
+        return new BlockEntry(itemText, inlineSuffix);
     }
 
     /**
@@ -197,9 +249,15 @@ public final class YamlWriter {
         Deque<String> nesting = new ArrayDeque<>();
         Deque<Integer> nestingDepths = new ArrayDeque<>();
 
+        List<String> pendingComments = new ArrayList<>();
+
         for (int i = 0; i < lines.size(); i++) {
             String rawLine = lines.get(i);
-            if (isBlank(rawLine) || isCommentOnly(rawLine)) {
+            if (isBlank(rawLine)) {
+                continue;
+            }
+            if (isCommentOnly(rawLine)) {
+                pendingComments.add(rawLine);
                 continue;
             }
 
@@ -215,15 +273,26 @@ public final class YamlWriter {
             if (isListItem(stripped)) {
                 String path = joinDeque(nesting);
                 int dashIdx = rawLine.indexOf('-');
-                int indent = dashIdx;
-                final int lineIdx = i;
-                final int listIndent = indent;
-                index.lineMap.putIfAbsent(path, new LineInfo(lineIdx, dashIdx + 2, true));
-                ListBlock block = index.listBlocks.computeIfAbsent(path,
-                        k -> new ListBlock(lineIdx, lineIdx, listIndent));
-                block.endLine = lineIdx;
+                index.lineMap.putIfAbsent(path, new LineInfo(i, dashIdx + 2, true));
+
+                BlockEntry entry = createEntry(rawLine, dashIdx);
+                ListBlock block = index.listBlocks.get(path);
+                if (block == null) {
+                    block = new ListBlock(i, i, dashIdx);
+                    index.listBlocks.put(path, block);
+                    // 块首条目之前的注释在替换范围之外，原样保留
+                    pendingComments.clear();
+                } else {
+                    entry.headerComments.addAll(pendingComments);
+                    pendingComments.clear();
+                }
+                block.entries.add(entry);
+                block.endLine = i;
                 continue;
             }
+
+            // 非列表行：块外注释不参与块重写
+            pendingComments.clear();
 
             int colon = stripped.indexOf(':');
             if (colon < 0) {
@@ -372,10 +441,22 @@ public final class YamlWriter {
         }
     }
 
+    static final class BlockEntry {
+        final String itemText;
+        final String inlineSuffix;
+        final List<String> headerComments = new ArrayList<>();
+
+        BlockEntry(String itemText, String inlineSuffix) {
+            this.itemText = itemText;
+            this.inlineSuffix = inlineSuffix;
+        }
+    }
+
     static final class ListBlock {
         final int startLine;
         int endLine;
         final int indent;
+        final List<BlockEntry> entries = new ArrayList<>();
 
         ListBlock(int startLine, int endLine, int indent) {
             this.startLine = startLine;
