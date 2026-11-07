@@ -45,3 +45,5 @@ bin/
 
 ### 发布凭据（勿提交） ###
 gradle.properties
+/promo-video/
+/promo-video-short/
