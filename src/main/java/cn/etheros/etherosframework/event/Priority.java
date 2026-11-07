@@ -16,15 +16,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package cn.etheros.etherosframework.hook.exception;
+package cn.etheros.etherosframework.event;
 
-public class HookException extends RuntimeException {
-
-    public HookException(String message) {
-        super(message);
-    }
-
-    public HookException(String message, Throwable cause) {
-        super(message, cause);
-    }
+/**
+ * 监听器优先级，按 LOW、MEDIUM、HIGH 顺序投递
+ */
+public enum Priority {
+    LOW,
+    MEDIUM,
+    HIGH
 }

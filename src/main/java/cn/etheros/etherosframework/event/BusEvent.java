@@ -16,7 +16,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package cn.etheros.etherosframework.hook.entity;
+package cn.etheros.etherosframework.event;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,11 +25,14 @@ import lombok.experimental.Accessors;
 
 import java.util.Map;
 
+/**
+ * 事件载荷
+ */
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Accessors(chain = true)
-public class HookEvent {
+public class BusEvent {
 
     private Map<Object, Object> data;
     private boolean cancelled;

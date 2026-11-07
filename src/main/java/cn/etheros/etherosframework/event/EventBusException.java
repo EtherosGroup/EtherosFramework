@@ -16,10 +16,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package cn.etheros.etherosframework.hook.entity;
+package cn.etheros.etherosframework.event;
 
-public enum Priority {
-    LOW,
-    MEDIUM,
-    HIGH
+/**
+ * 事件总线异常
+ */
+public class EventBusException extends RuntimeException {
+
+    public EventBusException(String message) {
+        super(message);
+    }
+
+    public EventBusException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

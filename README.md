@@ -1,6 +1,6 @@
 # EtherosFramework
 
-轻量级依赖注入、钩子与配置文件解析框架，专为 Minecraft 服务端插件设计，支持跨插件 Bean 共享。
+轻量级依赖注入、事件总线与配置文件解析框架，专为 Minecraft 服务端插件设计，支持跨插件 Bean 共享。
 
 ## 适用范围
 
@@ -36,7 +36,7 @@
 | **跨插件共享** | `@GlobalService` 将 Bean 自动注册到 `SharedContext`，其他插件可通过 `@Autowired` 透明获取 |
 | **属性注入** | `@Value("key")` 从 `application.properties` 读取配置值                        |
 | **生命周期** | `@PostConstruct` / `@PreDestroy` 回调                                     |
-| **钩子系统** | `HookManager` 接口 + `HookEvent` 事件模型，支持优先级和取消传播                              |
+| **事件总线** | `EventBus` 接口 + `BusEvent` 事件模型，支持优先级和取消传播                              |
 | **YAML 解析** | `@YamlConfig` / `@ConfigNode` 注解驱动，静态内部类自动映射，写出保留注释                    |
 | **字节码扫描** | 内置 class 文件注解解析，不加载类，不依赖 ASM                                              |
 
@@ -272,10 +272,7 @@ cn.etheros.etherosframework
 │   ├── scanner/       — ClassPathScanner
 │   ├── lifecycle/     — LifecycleProcessor
 │   └── exception/     — BeanCreationException, BeanNotFoundException, CircularDependencyException
-├── hook/
-│   ├── core/          — HookManager (interface)
-│   ├── entity/        — HookEvent, Priority
-│   └── exception/     — HookException
+├── event/             — EventBus (interface), BusEvent, Priority, EventBusException
 ├── internal/
 │   ├── ClassFileAnnotations — class 文件类级注解解析
 │   └── TextUtil             — Java 11 字符串方法的 Java 8 等价实现
@@ -305,27 +302,30 @@ cn.etheros.etherosframework
 | `@YamlConfig` | TYPE | 标记 YAML 配置映射类，静态内部类自动映射为节点 |
 | `@ConfigNode` | FIELD | 手动指定 YAML 键名，优先于自动驼峰转短横线 |
 
-## 钩子系统
+## 事件总线
 
 ```java
 // 定义事件
-HookEvent event = new HookEvent();
+BusEvent event = new BusEvent();
 event.setData(Map.of("player", player));
 
-// 注册钩子
-hookManager.register("player.join", e -> {
+// 订阅，返回取消句柄
+EventBus.Subscription subscription = eventBus.subscribe("player.join", e -> {
     Player p = (Player) e.getData().get("player");
     p.sendMessage("Welcome!");
 }, Priority.HIGH);
 
-// 触发
-hookManager.callEvent("player.join", event);
+// 投递
+eventBus.post("player.join", event);
 
 // 取消传播
 event.setCancelled(true);
+
+// 取消订阅
+subscription.unsubscribe();
 ```
 
-`HookManager` 接口需由宿主插件实现并注册为 `@GlobalService`，子插件通过 `@Autowired` 获取同一实例。
+`EventBus` 接口需由宿主插件实现并注册为 `@GlobalService`，子插件通过 `@Autowired` 获取同一实例。
 
 ## 生命周期顺序
 
