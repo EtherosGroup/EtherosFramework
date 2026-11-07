@@ -305,14 +305,15 @@ cn.etheros.etherosframework
 ## 事件总线
 
 ```java
-// 定义事件
-BusEvent event = new BusEvent();
-event.setData(Map.of("player", player));
+// 定义事件：载荷只允许 JDK 值类型
+BusEvent event = new BusEvent()
+        .put("playerName", "Steve")
+        .put("playerId", player.getUniqueId());
 
 // 订阅，返回取消句柄
 EventBus.Subscription subscription = eventBus.subscribe("player.join", e -> {
-    Player p = (Player) e.getData().get("player");
-    p.sendMessage("Welcome!");
+    String name = (String) e.getData().get("playerName");
+    System.out.println("Welcome, " + name);
 }, Priority.HIGH);
 
 // 投递
@@ -326,6 +327,20 @@ subscription.unsubscribe();
 ```
 
 `EventBus` 接口需由宿主插件实现并注册为 `@GlobalService`，子插件通过 `@Autowired` 获取同一实例。
+
+### 载荷约束
+
+跨插件投递时，插件自定义类型在不同 classloader 下不是同一个类，订阅方无法强转；平台对象（`Player` 等）也不应放进载荷。`BusEvent` 在设置载荷时逐项校验：
+
+| 规则 | 处理 |
+|---|---|
+| 允许的值类型 | `String`、包装类型、`UUID`、JDK 枚举、JDK 集合/数组/`Optional` |
+| 拒绝的值类型 | 插件自定义类、平台对象、其他非 JDK 类 |
+| Map 键 | 必须是非空字符串，嵌套 Map 同样适用 |
+| 环引用 | 拒绝 |
+| 节点上限 | 单次校验 1024 个节点；不限制深度，深度受节点预算约束 |
+
+对象引用用标识（UUID、名称、ID）表达，订阅方自行解析；平台事件桥只做「值投影」。
 
 ## 生命周期顺序
 
