@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "cn.etheros"
-version = "1.0.0"
+version = "2.0.0"
 description = "Etheros Framework (Java 8+ / Minecraft 1.8.x\u201326.2)"
 
 java {
@@ -85,8 +85,11 @@ mavenPublishing {
     }
 }
 
-signing {
-    useGpgCmd()
+// 本地用 gpg 命令签名；CI 由 signingInMemoryKey 系列属性走内存签名
+if (providers.gradleProperty("signingInMemoryKey").orNull == null) {
+    signing {
+        useGpgCmd()
+    }
 }
 
 afterEvaluate {

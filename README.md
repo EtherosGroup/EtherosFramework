@@ -61,7 +61,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.etheros:EtherosFramework:1.0.0'
+    implementation 'cn.etheros:EtherosFramework:2.0.0'
 }
 ```
 
@@ -80,7 +80,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.etheros:EtherosFramework:1.0.0'
+    implementation 'cn.etheros:EtherosFramework:2.0.0'
 }
 ```
 
@@ -101,7 +101,7 @@ plugins {
 }
 
 dependencies {
-    compileOnly 'cn.etheros:EtherosFramework:1.0.0'
+    compileOnly 'cn.etheros:EtherosFramework:2.0.0'
 }
 ```
 
@@ -359,10 +359,10 @@ A.@PreDestroy  →  B.@PreDestroy
 
 | 旧产物 | 版本 | 适用范围 |
 |--------|------|---------|
-| `cn.etheros:EtherosFramework-Yosemite` | 1.2.0 | Java 17 / MC 1.17–1.20.4 |
-| `cn.etheros:EtherosFramework-ElCapitan` | 1.0.0 | Java 21 / MC 1.20.5+ |
+| `cn.skilfully.etheros:EtherosFramework-Yosemite` | 1.2.0 | Java 17 / MC 1.17–1.20.4 |
+| `cn.skilfully.etheros:EtherosFramework-ElCapitan` | 1.0.0 | Java 21 / MC 1.20.5+ |
 
-替换为 `cn.etheros:EtherosFramework:1.0.0`。公开 API 不变，改动只在构建依赖与坐标。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
+替换为 `cn.etheros:EtherosFramework:2.0.0`。事件接口由 `HookManager` 更名为 `EventBus`，包 `hook` 迁移到 `event`；其余 API 与用法不变。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
 
 ## 构建
 
@@ -373,6 +373,27 @@ A.@PreDestroy  →  B.@PreDestroy
 - 主源码：`--release 8`，产物全部为 major 52
 - 测试：当前 JDK 语言级别，不随 jar 发布
 - 依赖：仅 JUnit（测试）与 Lombok（编译期）
+
+## 发布
+
+推 `v*` 标签触发 `.github/workflows/publish.yml`：构建、测试、签名并发布到 Maven Central。
+
+标签版本必须与 `build.gradle.kts` 的 `version` 一致：标签 `v2.0.0` 对应 `version = "2.0.0"`。
+
+仓库需配置的 secrets：
+
+| Secret | 内容 |
+|--------|------|
+| `MAVEN_CENTRAL_USERNAME` | Central Portal 用户令牌用户名 |
+| `MAVEN_CENTRAL_PASSWORD` | Central Portal 用户令牌密码 |
+| `GPG_SIGNING_KEY` | `gpg --export-secret-keys --armor <key id>` 的完整输出 |
+| `GPG_SIGNING_PASSWORD` | GPG 私钥口令，无口令留空 |
+
+本地发布用本机 gpg 命令签名：
+
+```bash
+./gradlew publishAndReleaseToMavenCentral
+```
 
 ## 联系
 
