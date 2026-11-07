@@ -48,7 +48,7 @@ public final class YamlDataBinder {
     public static <T> T bind(Map<String, Object> yamlData, Class<T> targetClass,
                              FieldBinding.ScanResult scanResult) {
         try {
-            T instance = targetClass.getDeclaredConstructor().newInstance();
+            T instance = newInstance(targetClass);
 
             for (FieldBinding binding : scanResult.rootBindings()) {
                 bindNode(yamlData, instance, binding);
@@ -62,7 +62,6 @@ public final class YamlDataBinder {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private static void bindNode(Map<String, Object> data, Object target,
                                  FieldBinding binding) throws Exception {
         if (binding.isLeaf()) {
@@ -75,20 +74,21 @@ public final class YamlDataBinder {
         } else {
             Object nestedInstance = FieldAccessor.getField(binding.field(), target);
             if (nestedInstance == null) {
-                nestedInstance = binding.nestedClass().getDeclaredConstructor().newInstance();
+                nestedInstance = newInstance(binding.nestedClass());
             }
 
             for (FieldBinding child : binding.children()) {
-                Object childRaw = data.get(child.yamlPath());
-                if (childRaw == null) {
-                    continue;
-                }
-                Object coerced = coerceValue(childRaw, child.type());
-                FieldAccessor.setField(child.field(), nestedInstance, coerced);
+                bindNode(data, nestedInstance, child);
             }
 
             FieldAccessor.setField(binding.field(), target, nestedInstance);
         }
+    }
+
+    private static <T> T newInstance(Class<T> type) throws Exception {
+        java.lang.reflect.Constructor<T> constructor = type.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        return constructor.newInstance();
     }
 
     @SuppressWarnings("unchecked")

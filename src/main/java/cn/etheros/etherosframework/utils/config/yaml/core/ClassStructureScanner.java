@@ -21,19 +21,19 @@ package cn.etheros.etherosframework.utils.config.yaml.core;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 扫描 {@code @YamlConfig} 目标类的结构，生成字段绑定节点树。
  *
  * <p>扫描规则：
  * <ul>
- *   <li>忽略 {@code static} 字段</li>
- *   <li>如果字段类型是目标类内部的静态类 → 判定为嵌套节点，递归扫描该静态类</li>
- *   <li>否则 → 叶子节点，绑定到 YAML 值</li>
+ *   <li>忽略 {@code static} 字段与编译器合成字段</li>
+ *   <li>目标类（含任意层静态内部类）声明的静态类视为节点类型；字段类型是节点类型时判定为嵌套节点，递归扫描</li>
+ *   <li>节点类型已出现在当前绑定路径上（自引用）时按叶子节点处理，避免无限递归</li>
+ *   <li>其余字段 → 叶子节点，绑定到 YAML 值</li>
  * </ul>
  */
 public final class ClassStructureScanner {
@@ -48,46 +48,61 @@ public final class ClassStructureScanner {
      * @return 扫描结果
      */
     public static FieldBinding.ScanResult scan(Class<?> targetClass) {
-        Set<Class<?>> staticInnerClasses = Arrays.stream(targetClass.getDeclaredClasses())
-                .filter(c -> Modifier.isStatic(c.getModifiers()))
-                .collect(Collectors.toSet());
+        Set<Class<?>> nodeClasses = new LinkedHashSet<>();
+        collectNodeClasses(targetClass, nodeClasses);
 
-        List<FieldBinding> rootBindings = new ArrayList<>();
-
-        for (Field field : targetClass.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers())) {
-                continue;
-            }
-            field.setAccessible(true);
-            Class<?> fieldType = field.getType();
-
-            if (staticInnerClasses.contains(fieldType)) {
-                String yamlKey = YamlNameConverter.classNameToKey(fieldType);
-                yamlKey = YamlNameConverter.camelToKebab(yamlKey);
-                List<FieldBinding> children = scanNestedFields(fieldType, yamlKey);
-                FieldBinding nestedBinding = new FieldBinding(yamlKey, field, children);
-                nestedBinding.setNestedClass(fieldType);
-                rootBindings.add(nestedBinding);
-            } else {
-                String yamlKey = YamlNameConverter.resolveKey(field);
-                rootBindings.add(new FieldBinding(yamlKey, field));
-            }
-        }
+        List<FieldBinding> rootBindings =
+                scanFields(targetClass, "", nodeClasses, new LinkedHashSet<>());
 
         return FieldBinding.ScanResult.of(targetClass, rootBindings);
     }
 
-    private static List<FieldBinding> scanNestedFields(Class<?> clazz, String parentPath) {
+    /**
+     * 收集目标类内部声明的全部静态类，含多层嵌套。
+     */
+    private static void collectNodeClasses(Class<?> owner, Set<Class<?>> nodeClasses) {
+        for (Class<?> declared : owner.getDeclaredClasses()) {
+            if (!isNodeClass(declared) || !nodeClasses.add(declared)) {
+                continue;
+            }
+            collectNodeClasses(declared, nodeClasses);
+        }
+    }
+
+    private static boolean isNodeClass(Class<?> type) {
+        return Modifier.isStatic(type.getModifiers())
+                && !type.isEnum()
+                && !type.isInterface()
+                && !type.isAnnotation();
+    }
+
+    private static List<FieldBinding> scanFields(Class<?> owner, String parentPath,
+                                                 Set<Class<?>> nodeClasses,
+                                                 Set<Class<?>> pathTypes) {
         List<FieldBinding> bindings = new ArrayList<>();
 
-        for (Field field : clazz.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers())) {
+        for (Field field : owner.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
                 continue;
             }
             field.setAccessible(true);
+
             String yamlKey = YamlNameConverter.resolveKey(field);
-            String fullPath = parentPath + "." + yamlKey;
-            bindings.add(new FieldBinding(fullPath, field));
+            String path = parentPath.isEmpty() ? yamlKey : parentPath + "." + yamlKey;
+            Class<?> fieldType = field.getType();
+
+            if (nodeClasses.contains(fieldType) && !pathTypes.contains(fieldType)) {
+                Set<Class<?>> nestedPath = new LinkedHashSet<>(pathTypes);
+                nestedPath.add(fieldType);
+
+                FieldBinding nestedBinding =
+                        new FieldBinding(path, field,
+                                scanFields(fieldType, path, nodeClasses, nestedPath));
+                nestedBinding.setNestedClass(fieldType);
+                bindings.add(nestedBinding);
+            } else {
+                bindings.add(new FieldBinding(path, field));
+            }
         }
 
         return bindings;

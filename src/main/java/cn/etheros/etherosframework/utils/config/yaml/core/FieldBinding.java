@@ -91,9 +91,9 @@ public final class FieldBinding {
         return field.getType();
     }
 
-    /** 无子绑定时为 {@code true}。 */
+    /** 叶子绑定（非嵌套节点）返回 {@code true}。 */
     public boolean isLeaf() {
-        return children.isEmpty();
+        return nestedClass == null;
     }
 
     /** 嵌套绑定的子绑定列表。 */

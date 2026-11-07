@@ -45,12 +45,13 @@ import java.lang.annotation.Target;
  * }</pre>
  *
  * <h3>嵌套字段</h3>
- * <p>Scanner 通过字段类型匹配静态内部类来识别嵌套节点。
+ * <p>字段类型是目标类内部声明的静态类时，按该类的字段递归展开为子节点，层数不限。
  * 对应字段需用户手动声明：
  * <pre>{@code
- * private Server server;                // YAML 缺此节点时字段为 null
- * private Server server = new Server(); // YAML 缺此节点时保留内部默认值
+ * private Server server;                // 解析器在需要时创建默认实例
+ * private Server server = new Server(); // 保留字段上定义的默认值
  * }</pre>
+ * <p>同一类型已出现在当前绑定路径上（自引用）时按叶子节点处理，不会无限递归。
  *
  * <h3>配合 Lombok</h3>
  * <p>可叠加 {@code @Data} 来自动生成 getter/setter（可选）：

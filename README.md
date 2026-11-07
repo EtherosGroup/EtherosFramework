@@ -175,7 +175,7 @@ public class UserModule {
 
 ## YAML 配置解析
 
-`YamlConfigurationParser` 提供注解驱动的 YAML 配置解析，静态内部类自动映射为节点，写出时保留原始注释与格式。
+`YamlConfigurationParser` 提供注解驱动的 YAML 配置解析，静态内部类自动映射为节点（支持任意层嵌套），写出时保留原始注释与格式。
 
 ### 配置类定义
 
@@ -194,6 +194,12 @@ public class PluginConfig {
         private String username;
         private String password;
         private Boolean sslEnabled = true;
+        private Pool pool = new Pool();
+
+        public static class Pool {
+            private int maxSize = 10;
+            private long idleTimeout = 60L;
+        }
     }
 
     public static class Messages {
@@ -215,6 +221,9 @@ database:
   username: root                           # 数据库用户
   password: "abc#123"                      # 数据库密码
   ssl-enabled: false                       # 是否启用SSL
+  pool:
+    max-size: 10                           # 连接池上限
+    idle-timeout: 60                       # 空闲超时（秒）
 messages:
   welcome-msg: "&aHello %player%!"         # 欢迎语
   motd:
@@ -246,9 +255,11 @@ parser.write(new File("plugins/ExamplePlugin/config.yml"), config);
 | 字段名驼峰转短横线 | `welcomeMsg` → `welcome-msg` |
 | `@ConfigNode` 手动指定 | `@ConfigNode("kick-message")` 优先于自动转换 |
 
+嵌套按**字段类型**识别：字段类型是配置类内部声明的静态类时，按该类的字段继续展开为子节点，层数不限；节点键名取类名转换结果，与字段名无关。同一类型已出现在当前绑定路径上（自引用）时按叶子节点处理，不会无限递归。
+
 ### 支持的类型
 
-`String`、基本类型及包装类（`int`、`boolean`、`double` 等）、`List<T>`、`Map<String, Object>`，以及嵌套静态内部类。YAML 中缺失的键会保留字段上定义的默认值。
+`String`、基本类型及包装类（`int`、`boolean`、`double` 等）、`List<T>`（元素为标量），以及静态内部类嵌套节点（任意层）。YAML 中缺失的键会保留字段上定义的默认值，缺失的节点层级会按字段默认值实例化。`Map` 类型字段暂不支持映射。
 
 ### ConfigFileUtil
 
