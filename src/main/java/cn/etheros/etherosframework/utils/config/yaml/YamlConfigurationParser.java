@@ -45,7 +45,7 @@ public class YamlConfigurationParser {
      *   <li>静态内部类名首字母自动转为小写，匹配 YAML 中的一级节点</li>
      *   <li>字段名采用驼峰转短横线规则（如 {@code nodeOne} → {@code node-one}）</li>
      *   <li>YAML 中缺失的键会保留字段上定义的默认值，不会覆盖</li>
-     *   <li>支持 {@code String}、基本类型及其包装类、{@link List} {@link Map} 以及嵌套静态类</li>
+     *   <li>支持 {@code String}、基本类型及其包装类、枚举、{@link List} 以及嵌套静态类</li>
      *   <li>保留 YAML 中的注释，可在写出时恢复</li>
      * </ul>
      *

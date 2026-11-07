@@ -99,6 +99,9 @@ public final class YamlDataBinder {
         if (targetType.isAssignableFrom(raw.getClass())) {
             return raw;
         }
+        if (targetType.isEnum()) {
+            return coerceEnum(raw, targetType);
+        }
         if (targetType == String.class) {
             return raw.toString();
         }
@@ -174,5 +177,29 @@ public final class YamlDataBinder {
         throw new BindingException(
                 "Cannot coerce value of type " + raw.getClass().getName()
                 + " to " + targetType.getName());
+    }
+
+    /**
+     * 按枚举常量名匹配，忽略大小写；没有匹配项时抛出带可用值列表的异常。
+     */
+    private static Object coerceEnum(Object raw, Class<?> enumType) {
+        String text = raw instanceof String ? ((String) raw).trim() : String.valueOf(raw);
+        Object[] constants = enumType.getEnumConstants();
+
+        for (Object constant : constants) {
+            if (((Enum<?>) constant).name().equalsIgnoreCase(text)) {
+                return constant;
+            }
+        }
+
+        StringBuilder allowed = new StringBuilder();
+        for (Object constant : constants) {
+            if (allowed.length() > 0) {
+                allowed.append(", ");
+            }
+            allowed.append(((Enum<?>) constant).name());
+        }
+        throw new BindingException("Cannot convert value \"" + text + "\" to enum "
+                + enumType.getName() + "; allowed values: [" + allowed + "]");
     }
 }

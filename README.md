@@ -259,7 +259,38 @@ parser.write(new File("plugins/ExamplePlugin/config.yml"), config);
 
 ### 支持的类型
 
-`String`、基本类型及包装类（`int`、`boolean`、`double` 等）、`List<T>`（元素为标量），以及静态内部类嵌套节点（任意层）。YAML 中缺失的键会保留字段上定义的默认值，缺失的节点层级会按字段默认值实例化。`Map` 类型字段暂不支持映射。
+`String`、基本类型及包装类（`int`、`boolean`、`double` 等）、枚举、`List<T>`（元素为标量），以及静态内部类嵌套节点（任意层）。YAML 中缺失的键会保留字段上定义的默认值，缺失的节点层级会按字段默认值实例化。`Map` 类型字段暂不支持映射，`List<Enum>` 的元素也不做枚举转换（按标量读取）。
+
+### 枚举字段
+
+枚举按常量名匹配，**忽略大小写**；值不匹配时抛 `BindingException`，异常信息会列出该枚举的全部可用值。枚举可以声明在配置类内部任意层：
+
+```java
+@YamlConfig
+public class PluginSetting {
+    private Authentication authentication = new Authentication();
+
+    public static class Authentication {
+        private boolean enabled;
+        private Type type = Type.local;
+
+        public enum Type {
+            official,
+            local,
+            proxy,
+            custom
+        }
+    }
+}
+```
+
+```yaml
+authentication:
+  enabled: true
+  type: official      # 写 OFFICIAL、Local 也能匹配
+```
+
+写出时按枚举常量名原样写回（`type: local`）。
 
 ### ConfigFileUtil
 
