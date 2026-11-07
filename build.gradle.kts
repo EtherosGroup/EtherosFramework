@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "cn.etheros"
-version = "2.1.0"
+version = "2.2.0"
 description = "Etheros Framework (Java 8+ / Minecraft 1.8.x\u201326.2)"
 
 java {

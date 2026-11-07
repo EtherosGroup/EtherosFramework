@@ -31,10 +31,10 @@ public class ConfigFileUtil {
     /**
      * 创建工作目录
      * @param pluginName 插件名
-     * @return 插件工作目录，一般是 plugins/Etheros/{pluginName}。当创建失败时返回null
+     * @return 插件工作目录，一般是 plugins/{pluginName}。当创建失败时返回null
      */
     public static File createWorkDirectory(String pluginName) {
-        String workDirectoryPath = "plugins/Etheros/" + pluginName;
+        String workDirectoryPath = "plugins/" + pluginName;
         Path path = Paths.get(workDirectoryPath);
         File directory = path.toFile();
         if (!directory.exists()) {
@@ -48,10 +48,10 @@ public class ConfigFileUtil {
     /**
      * 获取工作目录url
      * @param pluginName 插件名
-     * @return 工作目录 e.g. plugins/Etheros/EtherosCore/
+     * @return 工作目录 e.g. plugins/EtherosCore/
      */
     public static String getWorkDirectory(String pluginName) {
-        return "plugins/Etheros/" + pluginName + "/";
+        return "plugins/" + pluginName + "/";
     }
 
     /**
