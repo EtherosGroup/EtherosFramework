@@ -39,6 +39,7 @@
 | **事件总线** | `EventBus` 接口 + `BusEvent` 事件模型，支持优先级和取消传播                              |
 | **YAML 解析** | `@YamlConfig` / `@ConfigNode` 注解驱动，静态内部类自动映射，写出保留注释                    |
 | **字节码扫描** | 内置 class 文件注解解析，不加载类，不依赖 ASM                                              |
+| **扩展点**     | `FieldInjectionProvider` 自定义字段注入，日志器/配置对象等扩展库可接入 DI                     |
 
 ## 快速开始
 
@@ -61,7 +62,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.etheros:EtherosFramework:2.4.1'
+    implementation 'cn.etheros:EtherosFramework:2.5.0'
 }
 ```
 
@@ -80,7 +81,7 @@ plugins {
 }
 
 dependencies {
-    implementation 'cn.etheros:EtherosFramework:2.4.1'
+    implementation 'cn.etheros:EtherosFramework:2.5.0'
 }
 ```
 
@@ -101,7 +102,7 @@ plugins {
 }
 
 dependencies {
-    compileOnly 'cn.etheros:EtherosFramework:2.4.1'
+    compileOnly 'cn.etheros:EtherosFramework:2.5.0'
 }
 ```
 
@@ -329,6 +330,7 @@ cn.etheros.etherosframework
 │   ├── core/          — ApplicationContext, BeanDefinition, BeanRegistry, SharedContext, PropertyLoader
 │   ├── scanner/       — ClassPathScanner
 │   ├── lifecycle/     — LifecycleProcessor
+│   ├── spi/           — FieldInjectionProvider, FieldInjectionProviders
 │   └── exception/     — BeanCreationException, BeanNotFoundException, CircularDependencyException
 ├── event/             — EventBus (interface), BusEvent, Priority
 ├── internal/
@@ -359,6 +361,34 @@ cn.etheros.etherosframework
 | `@Prototype` | TYPE | 原型作用域，每次获取新建实例 |
 | `@YamlConfig` | TYPE | 标记 YAML 配置映射类，静态内部类自动映射为节点 |
 | `@ConfigNode` | FIELD | 手动指定 YAML 键名，优先于自动驼峰转短横线 |
+
+## 自定义字段注入（扩展点）
+
+内置注入注解只有 `@Autowired` / `@GlobalAutowired` / `@Value`。扩展库（例如 EtherosLib 的 `@Log`）可以实现 `FieldInjectionProvider` 接入 DI，框架本身不感知具体业务：
+
+```java
+public final class MyInjector implements FieldInjectionProvider {
+
+    @Override
+    public boolean supports(Field field) {
+        return field.isAnnotationPresent(Log.class);
+    }
+
+    @Override
+    public Object resolve(Field field, String beanName, ApplicationContext context) {
+        return MyLoggers.get(context.getPropertyLoader().getProperty("logger.name"));
+    }
+}
+
+// 必须在 ApplicationContext.run(...) 之前注册
+FieldInjectionProviders.register(new MyInjector());
+ApplicationContext context = ApplicationContext.run(MyPlugin.class);
+```
+
+- `supports` 在 **Bean 扫描阶段** 调用，决定字段是否进入注入列表；注册必须早于 `ApplicationContext.run(...)`。
+- `resolve` 在字段注入阶段、`@PostConstruct` 之前调用；返回 `null` 表示跳过注入、字段保留默认值，抛出的异常会包装为 `BeanCreationException`。
+- 同一实现类重复注册会替换旧实例，便于插件重载；`unregister` / `clear` 用于卸载与测试。
+- 目前只支持字段注入，构造器参数暂不支持。
 
 ## 事件总线
 
@@ -435,7 +465,7 @@ A.@PreDestroy  →  B.@PreDestroy
 | `cn.skilfully.etheros:EtherosFramework-Yosemite` | 1.2.0 | Java 17 / MC 1.17–1.20.4 |
 | `cn.skilfully.etheros:EtherosFramework-ElCapitan` | 1.0.0 | Java 21 / MC 1.20.5+ |
 
-替换为 `cn.etheros:EtherosFramework:2.4.1`。事件接口由 `HookManager` 更名为 `EventBus`，包 `hook` 迁移到 `event`；其余 API 与用法不变。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
+替换为 `cn.etheros:EtherosFramework:2.5.0`。事件接口由 `HookManager` 更名为 `EventBus`，包 `hook` 迁移到 `event`；其余 API 与用法不变。以 1.8–1.16.5 服务端为目标时，插件自身仍需编译到 Java 8。
 
 ## 构建
 
@@ -451,7 +481,7 @@ A.@PreDestroy  →  B.@PreDestroy
 
 推 `v*` 标签触发 `.github/workflows/publish.yml`：构建、测试、签名并发布到 Maven Central。
 
-标签版本必须与 `build.gradle.kts` 的 `version` 一致：标签 `v2.4.1` 对应 `version = "2.4.1"`。
+标签版本必须与 `build.gradle.kts` 的 `version` 一致：标签 `v2.5.0` 对应 `version = "2.5.0"`。
 
 仓库需配置的 secrets：
 

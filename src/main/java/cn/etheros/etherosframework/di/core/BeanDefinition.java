@@ -19,6 +19,7 @@
 package cn.etheros.etherosframework.di.core;
 
 import cn.etheros.etherosframework.di.annotation.*;
+import cn.etheros.etherosframework.di.spi.FieldInjectionProviders;
 import lombok.Getter;
 import lombok.ToString;
 
@@ -87,7 +88,8 @@ public class BeanDefinition {
         for (Field field : clazz.getDeclaredFields()) {
             if (field.isAnnotationPresent(Autowired.class)
                     || field.isAnnotationPresent(GlobalAutowired.class)
-                    || field.isAnnotationPresent(Value.class)) {
+                    || field.isAnnotationPresent(Value.class)
+                    || FieldInjectionProviders.supports(field)) {
                 field.setAccessible(true);
                 fields.add(field);
             }

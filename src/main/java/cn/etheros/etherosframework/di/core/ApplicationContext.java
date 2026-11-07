@@ -24,6 +24,7 @@ import cn.etheros.etherosframework.di.exception.BeanNotFoundException;
 import cn.etheros.etherosframework.di.exception.CircularDependencyException;
 import cn.etheros.etherosframework.di.lifecycle.LifecycleProcessor;
 import cn.etheros.etherosframework.di.scanner.ClassPathScanner;
+import cn.etheros.etherosframework.di.spi.FieldInjectionProviders;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -205,8 +206,10 @@ public class ApplicationContext {
             if (instance == null) continue;
             for (Field field : def.getInjectFields()) {
                 try {
-                    Object value = resolveFieldValue(field, def.getBeanClass().getName());
-                    field.set(instance, value);
+                    Object value = resolveFieldValue(field, def.getBeanName());
+                    if (value != null) {
+                        field.set(instance, value);
+                    }
                 } catch (Exception e) {
                     throw new BeanCreationException(
                             "Failed to inject " + field.getName() + " on "
@@ -238,6 +241,17 @@ public class ApplicationContext {
         Autowired autowireAnn = field.getAnnotation(Autowired.class);
         if (autowireAnn != null) {
             return resolveLocalBean(autowireAnn.value(), field.getType(), autowireAnn.required(), field.getName());
+        }
+
+        try {
+            Object provided = FieldInjectionProviders.resolve(field, contextName, this);
+            if (provided != null) {
+                return provided;
+            }
+        } catch (Exception e) {
+            throw new BeanCreationException(
+                    "Failed to resolve custom injection for " + field.getName()
+                            + " on " + contextName, e);
         }
         return null;
     }
@@ -296,8 +310,10 @@ public class ApplicationContext {
             if (instance == null) continue;
             for (Field field : def.getInjectFields()) {
                 try {
-                    Object value = resolveFieldValue(field, def.getBeanClass().getName());
-                    field.set(instance, value);
+                    Object value = resolveFieldValue(field, def.getBeanName());
+                    if (value != null) {
+                        field.set(instance, value);
+                    }
                 } catch (Exception e) {
                     throw new BeanCreationException(
                             "Failed to inject " + field.getName() + " on "
