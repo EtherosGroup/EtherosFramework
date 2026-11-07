@@ -23,9 +23,11 @@ import cn.etheros.etherosframework.utils.config.yaml.exception.BindingException;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -57,7 +59,9 @@ public final class YamlWriter {
         }
 
         LineIndex index = indexLines(lines);
-        writeBindings(scanResult.rootBindings(), configData, lines, index);
+        List<ListReplacement> replacements = new ArrayList<>();
+        writeBindings(scanResult.rootBindings(), configData, lines, index, replacements);
+        applyListReplacements(lines, replacements);
 
         try {
             Files.write(file.toPath(), lines);
@@ -67,24 +71,36 @@ public final class YamlWriter {
     }
 
     private static void writeBindings(List<FieldBinding> bindings, Object target,
-                                      List<String> lines, LineIndex index) {
+                                      List<String> lines, LineIndex index,
+                                      List<ListReplacement> replacements) {
         for (FieldBinding binding : bindings) {
             if (binding.isLeaf()) {
                 Object value = FieldAccessor.getField(binding.field(), target);
                 String path = binding.yamlPath();
-                if (value instanceof List) {
-                    List<?> list = (List<?>) value;
-                    replaceListBlock(lines, index, path, list);
+                if (value instanceof Collection) {
+                    collectListReplacement(lines, index, path,
+                            new ArrayList<Object>((Collection<?>) value), replacements);
+                } else if (value != null && value.getClass().isArray()) {
+                    collectListReplacement(lines, index, path, arrayValues(value), replacements);
                 } else {
                     replaceLine(lines, index, path, value);
                 }
             } else {
                 Object nested = FieldAccessor.getField(binding.field(), target);
                 if (nested != null) {
-                    writeBindings(binding.children(), nested, lines, index);
+                    writeBindings(binding.children(), nested, lines, index, replacements);
                 }
             }
         }
+    }
+
+    private static List<Object> arrayValues(Object array) {
+        int length = Array.getLength(array);
+        List<Object> values = new ArrayList<>(length);
+        for (int i = 0; i < length; i++) {
+            values.add(Array.get(array, i));
+        }
+        return values;
     }
 
     private static void replaceLine(List<String> lines, LineIndex index,
@@ -101,24 +117,35 @@ public final class YamlWriter {
         lines.set(info.lineIndex, prefix + valueStr + suffix);
     }
 
-    private static void replaceListBlock(List<String> lines, LineIndex index,
-                                         String path, List<?> newItems) {
+    private static void collectListReplacement(List<String> lines, LineIndex index,
+                                               String path, List<?> newItems,
+                                               List<ListReplacement> replacements) {
         LineInfo info = index.lineMap.get(path);
         ListBlock block = index.listBlocks.get(path);
         if (info == null || block == null) {
             return;
         }
 
-        for (int i = block.endLine; i >= block.startLine; i--) {
-            lines.remove(i);
-        }
-
         String indent = TextUtil.repeat(" ", block.indent);
-        List<String> newLines = new ArrayList<>();
+        List<String> newLines = new ArrayList<>(newItems.size());
         for (Object item : newItems) {
             newLines.add(indent + "- " + formatScalar(item));
         }
-        lines.addAll(block.startLine, newLines);
+        replacements.add(new ListReplacement(block.startLine, block.endLine, newLines));
+    }
+
+    /**
+     * 从文件末尾向前应用列表块替换，避免多处替换时行号互相错位。
+     */
+    private static void applyListReplacements(List<String> lines,
+                                              List<ListReplacement> replacements) {
+        replacements.sort((left, right) -> Integer.compare(right.startLine, left.startLine));
+        for (ListReplacement replacement : replacements) {
+            for (int i = replacement.endLine; i >= replacement.startLine; i--) {
+                lines.remove(i);
+            }
+            lines.addAll(replacement.startLine, replacement.newLines);
+        }
     }
 
     static String formatScalar(Object value) {
@@ -330,6 +357,18 @@ public final class YamlWriter {
             this.lineIndex = lineIndex;
             this.valueStart = valueStart;
             this.isListItem = isListItem;
+        }
+    }
+
+    static final class ListReplacement {
+        final int startLine;
+        final int endLine;
+        final List<String> newLines;
+
+        ListReplacement(int startLine, int endLine, List<String> newLines) {
+            this.startLine = startLine;
+            this.endLine = endLine;
+            this.newLines = newLines;
         }
     }
 

@@ -21,9 +21,24 @@ package cn.etheros.etherosframework.utils.config.yaml.core;
 import cn.etheros.etherosframework.internal.TextUtil;
 import cn.etheros.etherosframework.utils.config.yaml.exception.BindingException;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
+import java.util.Queue;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * 将扁平化的 YAML 数据绑定到目标对象的字段上。
@@ -69,7 +84,7 @@ public final class YamlDataBinder {
             if (rawValue == null) {
                 return;
             }
-            Object coerced = coerceValue(rawValue, binding.type());
+            Object coerced = coerceValue(rawValue, binding.type(), binding.genericType());
             FieldAccessor.setField(binding.field(), target, coerced);
         } else {
             Object nestedInstance = FieldAccessor.getField(binding.field(), target);
@@ -91,10 +106,23 @@ public final class YamlDataBinder {
         return constructor.newInstance();
     }
 
-    @SuppressWarnings("unchecked")
-    private static Object coerceValue(Object raw, Class<?> targetType) {
+    private static Object coerceValue(Object raw, Class<?> targetType, Type genericType) {
         if (raw == null) {
             return null;
+        }
+        if (raw instanceof List) {
+            List<?> rawList = (List<?>) raw;
+            if (targetType.isArray()) {
+                return coerceArray(rawList, targetType, genericType);
+            }
+            if (targetType == Object.class || targetType.isAssignableFrom(ArrayList.class)) {
+                return coerceElements(rawList, elementType(genericType),
+                        new ArrayList<>(rawList.size()));
+            }
+            if (Collection.class.isAssignableFrom(targetType)) {
+                return coerceElements(rawList, elementType(genericType),
+                        newCollection(targetType));
+            }
         }
         if (targetType.isAssignableFrom(raw.getClass())) {
             return raw;
@@ -201,5 +229,88 @@ public final class YamlDataBinder {
         }
         throw new BindingException("Cannot convert value \"" + text + "\" to enum "
                 + enumType.getName() + "; allowed values: [" + allowed + "]");
+    }
+
+    /**
+     * 按元素类型逐个转换集合元素；无泛型参数时元素保持原样。
+     */
+    private static Collection<Object> coerceElements(List<?> raw, Type elementType,
+                                                     Collection<Object> target) {
+        Class<?> elementClass = rawClassOf(elementType);
+        for (Object item : raw) {
+            target.add(coerceValue(item, elementClass, elementType));
+        }
+        return target;
+    }
+
+    /**
+     * 创建目标集合的实例：接口按常用实现处理，具体类型走无参构造器。
+     */
+    @SuppressWarnings("unchecked")
+    private static Collection<Object> newCollection(Class<?> targetType) {
+        if (targetType == Set.class) {
+            return new LinkedHashSet<>();
+        }
+        if (targetType == SortedSet.class || targetType == NavigableSet.class) {
+            return new TreeSet<>();
+        }
+        if (targetType == Queue.class || targetType == Deque.class) {
+            return new ArrayDeque<>();
+        }
+        if (targetType.isInterface() || Modifier.isAbstract(targetType.getModifiers())) {
+            throw new BindingException("Unsupported collection type: " + targetType.getName());
+        }
+        try {
+            return (Collection<Object>) targetType.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new BindingException(
+                    "Cannot instantiate collection type: " + targetType.getName(), e);
+        }
+    }
+
+    private static Object coerceArray(List<?> raw, Class<?> arrayType, Type genericType) {
+        Type componentType = arrayComponentType(arrayType, genericType);
+        Class<?> componentClass = rawClassOf(componentType);
+
+        Object array = Array.newInstance(componentClass, raw.size());
+        int index = 0;
+        for (Object item : raw) {
+            Array.set(array, index++, coerceValue(item, componentClass, componentType));
+        }
+        return array;
+    }
+
+    private static Type arrayComponentType(Class<?> arrayType, Type genericType) {
+        if (genericType instanceof GenericArrayType) {
+            return ((GenericArrayType) genericType).getGenericComponentType();
+        }
+        Class<?> componentType = arrayType.getComponentType();
+        return componentType != null ? componentType : Object.class;
+    }
+
+    private static Type elementType(Type genericType) {
+        if (genericType instanceof ParameterizedType) {
+            Type[] arguments = ((ParameterizedType) genericType).getActualTypeArguments();
+            if (arguments.length == 1) {
+                return arguments[0];
+            }
+        }
+        return Object.class;
+    }
+
+    private static Class<?> rawClassOf(Type type) {
+        if (type instanceof Class<?>) {
+            return (Class<?>) type;
+        }
+        if (type instanceof ParameterizedType) {
+            Type rawType = ((ParameterizedType) type).getRawType();
+            if (rawType instanceof Class<?>) {
+                return (Class<?>) rawType;
+            }
+        }
+        if (type instanceof GenericArrayType) {
+            return Object[].class;
+        }
+        return Object.class;
     }
 }

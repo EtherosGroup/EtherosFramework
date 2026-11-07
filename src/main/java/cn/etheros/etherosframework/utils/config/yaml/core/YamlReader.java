@@ -85,6 +85,10 @@ public final class YamlReader {
                 String currentPath = joinDeque(nesting);
                 if (targetKeys.contains(currentPath)) {
                     String rawValue = TextUtil.strip(line.substring(line.indexOf('-') + 1));
+                    int itemCommentIdx = commentAwareIndexOf(rawValue);
+                    if (itemCommentIdx >= 0) {
+                        rawValue = TextUtil.strip(rawValue.substring(0, itemCommentIdx));
+                    }
                     Object parsed = parseValue(rawValue);
                     @SuppressWarnings("unchecked")
                     List<Object> list = (List<Object>) result.computeIfAbsent(currentPath,

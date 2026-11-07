@@ -19,6 +19,7 @@
 package cn.etheros.etherosframework.utils.config.yaml.core;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -89,6 +90,11 @@ public final class FieldBinding {
     /** 字段类型。嵌套绑定返回内部类类型，叶子绑定返回字段自身类型。 */
     public Class<?> type() {
         return field.getType();
+    }
+
+    /** 字段的泛型类型，用于 {@code List<T>} 的元素转换；无泛型时为字段原始类型。 */
+    public Type genericType() {
+        return field.getGenericType();
     }
 
     /** 叶子绑定（非嵌套节点）返回 {@code true}。 */

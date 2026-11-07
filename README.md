@@ -259,7 +259,21 @@ parser.write(new File("plugins/ExamplePlugin/config.yml"), config);
 
 ### 支持的类型
 
-`String`、基本类型及包装类（`int`、`boolean`、`double` 等）、枚举、`List<T>`（元素为标量），以及静态内部类嵌套节点（任意层）。YAML 中缺失的键会保留字段上定义的默认值，缺失的节点层级会按字段默认值实例化。`Map` 类型字段暂不支持映射，`List<Enum>` 的元素也不做枚举转换（按标量读取）。
+`String`、基本类型及包装类（`int`、`boolean`、`double` 等）、枚举、集合与数组，以及静态内部类嵌套节点（任意层）。
+
+集合元素按泛型参数逐个转换（枚举 / 包装类 / `String` 都适用），目标类型按下列规则实例化：
+
+| 字段类型 | 实例 |
+|---|---|
+| `List<T>` / `Collection<T>` | `ArrayList` |
+| `Set<T>` | `LinkedHashSet`（保持 YAML 顺序、去重） |
+| `SortedSet<T>` / `NavigableSet<T>` | `TreeSet`（自然顺序） |
+| `Queue<T>` / `Deque<T>` | `ArrayDeque` |
+| 具体集合类型（如 `LinkedHashSet`、`LinkedList`） | 无参构造器 |
+
+数组按组件类型转换，`Mode[]`、`String[]`、`int[]`、`Integer[]` 都支持；写出时集合与数组统一写回列表块。
+
+YAML 中缺失的键会保留字段上定义的默认值，缺失的节点层级会按字段默认值实例化。`Map` 类型字段暂不支持映射。
 
 ### 枚举字段
 
@@ -291,6 +305,8 @@ authentication:
 ```
 
 写出时按枚举常量名原样写回（`type: local`）。
+
+集合与数组元素同样会按泛型参数/组件类型转换：`List<Type>`、`Set<Type>`、`Type[]` 写 `- official`、`- LOCAL` 都能正确绑定为枚举实例。
 
 ### ConfigFileUtil
 
