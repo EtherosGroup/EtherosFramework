@@ -272,7 +272,7 @@ cn.etheros.etherosframework
 │   ├── scanner/       — ClassPathScanner
 │   ├── lifecycle/     — LifecycleProcessor
 │   └── exception/     — BeanCreationException, BeanNotFoundException, CircularDependencyException
-├── event/             — EventBus (interface), BusEvent, Priority, EventBusException
+├── event/             — EventBus (interface), BusEvent, Priority
 ├── internal/
 │   ├── ClassFileAnnotations — class 文件类级注解解析
 │   └── TextUtil             — Java 11 字符串方法的 Java 8 等价实现
